@@ -1,5 +1,7 @@
 package com.example;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 
@@ -9,13 +11,21 @@ import java.io.FileInputStream;
 import java.security.KeyStore;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 @Path("/helloworld")
 public class HelloWorldResource {
     
     private final PublicKey clientPublicKey;
-    
+    // Resources are singletons in jax-rs
+    final Set<String> usedNonces = Collections.synchronizedSet(new HashSet<>()); // synchronizedSet makes it thread-safe
+
     public HelloWorldResource() throws Exception {
+
+        
+
         KeyStore ks = KeyStore.getInstance("JKS");
         // i'm loading the public key for the request here to make this focus on protocal 
         /*
@@ -61,7 +71,17 @@ public class HelloWorldResource {
                 I'm not doing this becasuse it's a test app and i'd like to see the error /learning purposes, but in prodcution i'd long more of these details and return a 401. 
 
              */
-            Jwts.parserBuilder().setSigningKey(clientPublicKey).build().parseClaimsJws(jwt);
+            Jws<Claims> jws = Jwts.parserBuilder().setSigningKey(clientPublicKey).build().parseClaimsJws(jwt);
+
+            String nonce = jws.getBody().get("nonce", String.class);
+
+            // Check if nonce is already used
+            if (usedNonces.contains(nonce)) {
+                return Response.status(Response.Status.BAD_REQUEST).entity("Replay detected!").build();
+            }
+
+            // Store the nonce (assuming a short validity period for the token, e.g., 5 minutes)
+            usedNonces.add(nonce);
 
             return Response.ok("Hello, World!").build();
         } catch (Exception e) {

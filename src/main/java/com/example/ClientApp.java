@@ -1,5 +1,6 @@
 package com.example;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 
@@ -8,6 +9,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.KeyStore;
 import java.security.PrivateKey;
+import java.util.UUID;
 
 public class ClientApp {
     
@@ -18,10 +20,17 @@ public class ClientApp {
         ks.load(new FileInputStream("client-keystore.jks"), "password".toCharArray());
         PrivateKey clientPrivateKey = (PrivateKey) ks.getKey("clientkey", "password".toCharArray());
 
-        String jwt = Jwts.builder()
-                .setSubject("Client")
-                .signWith(clientPrivateKey, SignatureAlgorithm.RS256) // sign the entire jwt. 
-                .compact();
+        // nonce
+        // String jwt = Jwts.builder()
+        //         .setSubject("Client")
+        //         .signWith(clientPrivateKey, SignatureAlgorithm.RS256) // sign the entire jwt. 
+        //         .compact();
+
+        String nonce = UUID.randomUUID().toString();
+        Claims claims = Jwts.claims().setSubject("Joe").setId(nonce);
+        String jwt = Jwts.builder().setClaims(claims)
+            .signWith(clientPrivateKey)
+            .compact();
 
         URL url = new URL("http://localhost:8080/helloworld");
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
